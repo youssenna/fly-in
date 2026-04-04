@@ -6,7 +6,7 @@
 #  By: yousenna <yousenna@student.42.fr>         +#+  +:+       +#+         #
 #                                              +#+#+#+#+#+   +#+            #
 #  Created: 2026/03/15 07:33:01 by yousenna        #+#    #+#               #
-#  Updated: 2026/03/29 19:13:32 by yousenna        ###   ########.fr        #
+#  Updated: 2026/04/03 12:42:28 by yousenna        ###   ########.fr        #
 #                                                                           #
 # ************************************************************************* #
 from typing import Dict, List, Optional, Tuple, Union, Any
@@ -89,22 +89,17 @@ class Zone:
         self.y: int = y
         self.metadata: ZoneMetaData = metadata
         self.prefix: str = prefix
+        self.nighbors: List[Zone] = []
 
     def __str__(self) -> str:
         return (
             f'|Zone info| name = {self.name} | '
             f'x = {self.x} | y = {self.y} | '
-            f'metadata = {self.metadata}'
+            f'metadata = {self.metadata}\n'
         )
 
     def __repr__(self) -> str:
         return self.__str__()
-
-
-class Drone:
-    def __init__(self, id: str, current_zone: Zone):
-        self.id = id
-        self.current_zone = current_zone
 
 
 class ConnecMetadata:
@@ -134,9 +129,10 @@ class Connection:
 
     def __str__(self) -> str:
         return (
-            f'|Connection info| zone1 = {self.zone1.name} | '
-            f'zone2 = {self.zone2.name} | '
-            f'metadata = {self.metadata} |'
+            f'[{self.zone1.name}-{self.zone2.name}]'
+            f'| Connection info| zone1 = {self.zone1} | '
+            f'zone2 = {self.zone2} | '
+            f'metadata = {self.metadata} |\n'
         )
 
     def __repr__(self) -> str:
