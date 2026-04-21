@@ -6,12 +6,14 @@
 #  By: yousenna <yousenna@student.42.fr>         +#+  +:+       +#+         #
 #                                              +#+#+#+#+#+   +#+            #
 #  Created: 2026/03/15 07:33:01 by yousenna        #+#    #+#               #
-#  Updated: 2026/04/03 12:42:28 by yousenna        ###   ########.fr        #
+#  Updated: 2026/04/20 13:50:02 by yousenna        ###   ########.fr        #
 #                                                                           #
 # ************************************************************************* #
 from typing import Dict, List, Optional, Tuple, Union, Any
 from enum import Enum
+from math import inf
 import os
+from collections import deque
 
 
 class ProporityError(Exception):
@@ -81,6 +83,20 @@ class ZoneMetaData:
         return valid_drones_nb
 
 
+class Drone:
+    def __init__(self, id: str):
+        self.id: str = id
+        self.restrected_target_zone: bool = False
+        # self.trucked: bool = True
+        # self.current_zone: str = ''
+
+    def __str__(self) -> str:
+        return (f'|id| = {self.id} | ')
+
+    def __repr__(self) -> str:
+        return self.__str__()
+
+
 class Zone:
     def __init__(self, name: str, x: int, y: int, metadata: ZoneMetaData,
                  prefix: str):
@@ -88,14 +104,33 @@ class Zone:
         self.x: int = x
         self.y: int = y
         self.metadata: ZoneMetaData = metadata
+        self.cost = self._cost()
         self.prefix: str = prefix
         self.nighbors: List[Zone] = []
+        self.visited = False
+        self.available_drones: deque[Drone] = deque()
+
+    def _cost(self) -> int:
+        if self.metadata.zone_type == ZoneTypes('normal'):
+            self.perfect: int = 1
+            return 1
+        if self.metadata.zone_type == ZoneTypes('restricted'):
+            self.perfect: int = 2
+            return 2
+        if self.metadata.zone_type == ZoneTypes('priority'):
+            self.perfect: int = 0
+            return 1
+        if self.metadata.zone_type == ZoneTypes('blocked'):
+            self.perfect: int = inf
+            return inf
 
     def __str__(self) -> str:
         return (
             f'|Zone info| name = {self.name} | '
             f'x = {self.x} | y = {self.y} | '
-            f'metadata = {self.metadata}\n'
+            f'metadata = {self.metadata} cost = {self.cost}|\n'
+            f'|--> available drones: '
+            f'{[drone for drone in self.available_drones]}\n\n'
         )
 
     def __repr__(self) -> str:
@@ -274,7 +309,7 @@ class Parser:
         elif '[' in rest or ']' in rest:
             raise SyntaxError(f'at line {line_number} '
                               'if you want to add metadata please put '
-                              'it between [] and check if of zone name '
+                              'it between [] and check if zone name '
                               'doesn\'t have "[" or "]"'
                               )
         else:
