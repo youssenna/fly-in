@@ -6,7 +6,7 @@
 #  By: yousenna <yousenna@student.42.fr>         +#+  +:+       +#+         #
 #                                              +#+#+#+#+#+   +#+            #
 #  Created: 2026/03/15 07:33:01 by yousenna        #+#    #+#               #
-#  Updated: 2026/04/20 13:50:02 by yousenna        ###   ########.fr        #
+#  Updated: 2026/04/25 10:04:47 by yousenna        ###   ########.fr        #
 #                                                                           #
 # ************************************************************************* #
 from typing import Dict, List, Optional, Tuple, Union, Any
@@ -107,8 +107,9 @@ class Zone:
         self.cost = self._cost()
         self.prefix: str = prefix
         self.nighbors: List[Zone] = []
-        self.visited = False
+        # self.add_drone: bool = True
         self.available_drones: deque[Drone] = deque()
+        self.restricted_drones: deque[Drone] = deque()
 
     def _cost(self) -> int:
         if self.metadata.zone_type == ZoneTypes('normal'):

@@ -1,6 +1,6 @@
 from typing import Any
 import pygame
-from parser import Zone, Connection
+from parser import Zone, Connection, ZoneTypes
 from time import sleep
 from random import choice
 
@@ -13,46 +13,76 @@ class Visualizer:
         pygame.init()
         pygame.font.init()
         self.font1: Any = pygame.font.SysFont('file', 15)
-        self.font2: Any = pygame.font.SysFont('file', 12)
+        self.font2: Any = pygame.font.SysFont('file', 13)
         self.font3: Any = pygame.font.SysFont('file', 40)
 
     def draw_zone(self, zone: Zone, surface: Any):
-        pygame.draw.rect(surface, zone.metadata.color,
-                         (zone.x * 80 + self.screen_w / 7 - 100,
-                          zone.y * 150 + self.screen_h / 2,
-                          60, 60), 0, 3)
-        self.draw_drones(zone, surface)
-        pygame.draw.rect(surface, 'white',
-                         (zone.x * 80 + self.screen_w / 7 - 100,
-                          zone.y * 150 + self.screen_h / 2,
-                          60, 60), 3, 3)
-        if len(zone.name) > 6:
-            text = self.font2.render(f'{zone.name}', True, 'green')
-            text1 = self.font2.render(f'drones: {len(zone.available_drones)}',
-                                      True, 'white')
-            surface.blit(text, (zone.x * 80 + self.screen_w / 7 - 100,
-                                zone.y * 150 + self.screen_h / 2 + 70))
-            surface.blit(text1, (zone.x * 80 + self.screen_w / 7 - 100,
-                                 zone.y * 150 + self.screen_h / 2 + 80))
-        else:
-            text = self.font1.render(f'{zone.name}', True, 'green')
-            surface.blit(text, (zone.x * 80 + self.screen_w / 7 - 100,
-                                zone.y * 150 + self.screen_h / 2 + 70))
-            text1 = self.font1.render(f'drones: {len(zone.available_drones)}',
-                                      True, 'white')
-            surface.blit(text1, (zone.x * 80 + self.screen_w / 7 - 100,
-                                 zone.y * 150 + self.screen_h / 2 + 80))
+        try:
+            # pygame.draw.rect(surface, zone.metadata.color,
+            #                  (zone.x * 80 + self.screen_w / 7 - 100,
+            #                   zone.y * 150 + self.screen_h / 2,
+            #                   60, 60), 0, 3)
+            pygame.draw.circle(surface, zone.metadata.color,
+                             (zone.x * 80 + self.screen_w / 7 - 70,
+                              zone.y * 150 + self.screen_h / 2 + 30), 35, 0)
+        except ValueError:
+            colors = {
+                'normal': 'blue',
+                'blocked': 'black',
+                'restricted': 'purple',
+                'priority': 'cyan'
+            }
+            if (zone.name == self.graph.start_end_zones.get('start_hub') or
+               zone.name == self.graph.start_end_zones.get('end_hub')):
+                color: str = 'green'
+            elif not zone.nighbors:
+                color = 'red'
+            else:
+                color = colors.get(zone.metadata.zone_type.value)
+            # pygame.draw.rect(surface, color,
+            #                  (zone.x * 80 + self.screen_w / 7 - 100,
+            #                   zone.y * 150 + self.screen_h / 2,
+            #                   60, 60), 0, 3)
+
+            pygame.draw.circle(surface, color,
+                             (zone.x * 80 + self.screen_w / 7 - 70,
+                              zone.y * 150 + self.screen_h / 2 + 30), 35, 0)
             
+        self.draw_drones(zone, surface)
+        # pygame.draw.rect(surface, 'white',
+        #                  (zone.x * 80 + self.screen_w / 7 - 100,
+        #                   zone.y * 150 + self.screen_h / 2,
+        #                   60, 60), 3, 3)
+        pygame.draw.circle(surface, 'white',
+                             (zone.x * 80 + self.screen_w / 7 - 70,
+                              zone.y * 150 + self.screen_h / 2 + 30), 35, 3)
+        zone_name = self.font2.render(f'{zone.name}', True, 'green')
+        available_d = self.font2.render(
+            'drones: '
+            f'{len(zone.available_drones)}',
+            True, 'white')
+        capacity_d = self.font2.render(
+            f'CAPACITY: {zone.metadata.max_drones}', True, 'white')
+        cost = self.font2.render(
+            f'COST: {zone.cost}', True, 'white')
+        surface.blit(zone_name, (zone.x * 80 + self.screen_w / 7 - 100,
+                     zone.y * 150 + self.screen_h / 2 + 70))
+        surface.blit(available_d, (zone.x * 80 + self.screen_w / 7 - 100,
+                     zone.y * 150 + self.screen_h / 2 + 80))
+        surface.blit(capacity_d, (zone.x * 80 + self.screen_w / 7 - 100,
+                     zone.y * 150 + self.screen_h / 2 + 90))
+        surface.blit(cost, (zone.x * 80 + self.screen_w / 7 - 100,
+                     zone.y * 150 + self.screen_h / 2 + 100))
             
     def draw_drones(self, zone: Zone, surface: Any):
         imgs = [pygame.image.load('./drone_picture3.png')
                 for _ in range(len(zone.available_drones))
-            ]
+                ]
         color = choice(['red', 'yellow', 'orange', 'white'])
         for img in imgs:
             surface.blit(img, (zone.x * 80 + self.screen_w / 7 - 100,
                          zone.y * 150 + self.screen_h / 2))
-            
+
             drone_info = self.font2.render(
                 f'{[drone.id for drone in zone.available_drones]}',
                 True, color)
@@ -66,7 +96,6 @@ class Visualizer:
                          (connec.zone2.x * 80 + self.screen_w / 7 + 25 - 100,
                           connec.zone2.y * 150 + self.screen_h / 2 + 25),
                          5)
-        
 
     def run_gui(self):
         info: Any = pygame.display.Info()
@@ -94,7 +123,9 @@ class Visualizer:
                    != self.graph.nb_drones):
                     nb_turnes += 1
                     self.graph.ft_turn(end_zone_name)
-            
+            if keys[pygame.K_TAB]:
+                self.screen_w *= 0.5
+                self.screen_h *= 0.5
 
             turns_counter = self.font3.render(f'Turnes: {nb_turnes}', True,
                                               'white')
@@ -111,15 +142,7 @@ class Visualizer:
             for zone in self.graph.zones.values():
                 self.draw_zone(zone, screen)
 
-            
-            
             pygame.display.update()
             sleep(0.1)
 
-            
-            
-
-
-
-            
         pygame.QUIT
