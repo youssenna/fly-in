@@ -6,7 +6,7 @@
 #  By: yousenna <yousenna@student.42.fr>         +#+  +:+       +#+         #
 #                                              +#+#+#+#+#+   +#+            #
 #  Created: 2026/03/15 07:33:01 by yousenna        #+#    #+#               #
-#  Updated: 2026/04/25 10:04:47 by yousenna        ###   ########.fr        #
+#  Updated: 2026/05/06 13:20:59 by yousenna        ###   ########.fr        #
 #                                                                           #
 # ************************************************************************* #
 from typing import Dict, List, Optional, Tuple, Union, Any
@@ -48,6 +48,7 @@ class ZoneMetaData:
 
     def __repr__(self) -> str:
         return self.__str__()
+    
 
     def _get_zone_type(self, zone_type: str) -> ZoneTypes:
         try:
@@ -84,14 +85,16 @@ class ZoneMetaData:
 
 
 class Drone:
+
     def __init__(self, id: str):
         self.id: str = id
         self.restrected_target_zone: bool = False
+        self.old_zones: List[str] = []
         # self.trucked: bool = True
-        # self.current_zone: str = ''
+        self.current_zone: str = ''
 
     def __str__(self) -> str:
-        return (f'|id| = {self.id} | ')
+        return (f'|id| = {self.id} | currnt_zone = {self.current_zone}\n')
 
     def __repr__(self) -> str:
         return self.__str__()
@@ -107,7 +110,8 @@ class Zone:
         self.cost = self._cost()
         self.prefix: str = prefix
         self.nighbors: List[Zone] = []
-        # self.add_drone: bool = True
+        self.capacity_usage: int = 0
+        self.move_to_restricted: bool = False
         self.available_drones: deque[Drone] = deque()
         self.restricted_drones: deque[Drone] = deque()
 
@@ -162,6 +166,8 @@ class Connection:
         self.zone1: Zone = zone_1
         self.zone2: Zone = zone_2
         self.metadata: ConnecMetadata = metadata
+        self.available_drones: deque[Drone] = deque()
+        self.capacity_usage: int = 0
 
     def __str__(self) -> str:
         return (
@@ -213,7 +219,7 @@ class Parser:
                     self.zones[zone_name] = zone_obj
                 # i need to parse first line that's has connection
                 elif 'connection' in line:
-                    self.connections.append(self._parse_connection(line,
+                    self.connections.extend(self._parse_connection(line,
                                                                    line_number
                                                                    ))
                     break
@@ -237,7 +243,7 @@ class Parser:
                 if line.startswith('#') or not line:
                     continue
                 if 'connection' in line:
-                    self.connections.append(
+                    self.connections.extend(
                         self._parse_connection(line, line_number)
                     )
                 else:
@@ -412,7 +418,8 @@ class Parser:
             return (zone_name, Zone(zone_name, x, y, ZoneMetaData(line_number,
                                     zone, color, max_drones), prefix))
 
-    def _parse_connection(self, line: str, line_number: int) -> Connection:
+    def _parse_connection(self, line: str, line_number: int
+                          ) -> Tuple[Connection]:
         if ':' not in line:
             raise SyntaxError(f'at line {line_number}: invalid syntax \n'
                               'expected syntax: '
@@ -502,12 +509,21 @@ class Parser:
                 raise ValueError(f'at line {line_number} '
                                  'max_link_capacity value must be valid '
                                  f'integer: {e}')
-            return Connection(self.zones.get(zone1),
-                              self.zones.get(zone2),
-                              ConnecMetadata(line_number, valid_value))
-        return Connection(self.zones.get(zone1),
-                          self.zones.get(zone2),
-                          ConnecMetadata(line_number))
+            return (Connection(self.zones.get(zone1),
+                               self.zones.get(zone2),
+                               ConnecMetadata(line_number, valid_value)),
+                    Connection(self.zones.get(zone2),
+                               self.zones.get(zone1),
+                               ConnecMetadata(line_number, valid_value))
+                    )
+    
+        return (Connection(self.zones.get(zone1),
+                           self.zones.get(zone2),
+                           ConnecMetadata(line_number)),
+                Connection(self.zones.get(zone2),
+                           self.zones.get(zone1),
+                           ConnecMetadata(line_number))
+                )
 
 
 if __name__ == "__main__":

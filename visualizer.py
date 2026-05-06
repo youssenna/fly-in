@@ -3,6 +3,8 @@ import pygame
 from parser import Zone, Connection, ZoneTypes
 from time import sleep
 from random import choice
+from collections import deque
+from parser import Drone
 
 
 class Visualizer:
@@ -96,6 +98,22 @@ class Visualizer:
                          (connec.zone2.x * 80 + self.screen_w / 7 + 25 - 100,
                           connec.zone2.y * 150 + self.screen_h / 2 + 25),
                          5)
+        # if drones_len := len(self.graph.connections.get(connec.zone1.name+'-'+connec.zone2.name).available_drones):
+        #     imgs = [pygame.image.load('./drone_picture3.png')
+        #             for _ in range(drones_len)
+        #             ]
+            
+        #     for img in imgs:
+        #         surface.blit(img, (connec.zone2.x * 80 + self.screen_w / 7 - 90,
+        #                     connec.zone2.y * 150 + self.screen_h / 2 - 10))
+
+        #         drone_info = self.font2.render(
+        #             f'{[drone.id for drone in self.graph.connections.get(connec.zone1.name+'-'+connec.zone2.name).available_drones]}',
+        #             True, 'white')
+        #         surface.blit(drone_info, (connec.zone2.x * 80 + self.screen_w / 7 - 90,
+        #                     connec.zone2.y * 150 + self.screen_h / 2 - 20))
+            
+
 
     def run_gui(self):
         info: Any = pygame.display.Info()
@@ -104,10 +122,13 @@ class Visualizer:
                                               pygame.RESIZABLE)
         pygame.display.set_caption('❣️❣️❣️ yousenna FLY-IN project ❣️❣️❣️')
         run: bool = True
-        self.graph.remove_drones_fron_all_zones()
+        self.graph.remove_drones_from_all_zones()
         self.graph.move_all_drones_to_start_zone()
         nb_turnes = 0
         end_zone_name: str = self.graph.start_end_zones.get('end_hub')
+        start_zone_name: str = self.graph.start_end_zones.get('start_hub')
+        drones: deque[Drone] = deque(self.graph.drones)
+        
         while run:
             
             screen.fill((11, 0, 89))
@@ -122,11 +143,18 @@ class Visualizer:
                 if (len(self.graph.zones.get(end_zone_name).available_drones)
                    != self.graph.nb_drones):
                     nb_turnes += 1
-                    self.graph.ft_turn(end_zone_name)
+                    self.graph.ft_turn(drones, self.graph.zones.get(end_zone_name))
             if keys[pygame.K_TAB]:
-                self.screen_w *= 0.5
-                self.screen_h *= 0.5
-
+                self.screen_w *= 0.9
+                # self.screen_h *= 0.5
+            if keys[pygame.K_DOWN]:
+                self.graph.remove_drones_from_all_zones()
+                self.graph.move_all_drones_to_start_zone()
+                drones: deque[Drone] = deque(self.graph.drones)
+                for drone in drones:
+                    drone.current_zone = start_zone_name
+                    drone.old_zones.clear()
+                nb_turnes = 0
             turns_counter = self.font3.render(f'Turnes: {nb_turnes}', True,
                                               'white')
             

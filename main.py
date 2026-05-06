@@ -6,7 +6,7 @@
 #  By: yousenna <yousenna@student.42.fr>         +#+  +:+       +#+         #
 #                                              +#+#+#+#+#+   +#+            #
 #  Created: 2026/03/30 16:47:56 by yousenna        #+#    #+#               #
-#  Updated: 2026/04/25 10:04:31 by yousenna        ###   ########.fr        #
+#  Updated: 2026/05/06 20:21:13 by yousenna        ###   ########.fr        #
 #                                                                           #
 # ************************************************************************* #
 
@@ -33,6 +33,7 @@ class Graph:
         self.drones: List[Drone] = self._creat_drones(nb_drones)
         self.paths: List[List[Zone]] = []
         self.path: List[Zone] = []
+        self.distance: Dict[List[str], Graph.NodeInfo] = {}
 
     def _find_nighbors(self, zone_name: str) -> List[Zone]:
         return [
@@ -44,7 +45,8 @@ class Graph:
         for zone in self.zones.values():
             zone.nighbors.extend(self._find_nighbors(zone.name))
 
-    def _creat_drones(self, nb_drones: int) -> deque[Drone]:
+    @staticmethod
+    def _creat_drones(nb_drones: int) -> deque[Drone]:
         return deque(Drone('D' + str(n+1)) for n in range(nb_drones))
 
     class NodeInfo:
@@ -58,185 +60,210 @@ class Graph:
         def __repr__(self) -> str:
             return self.__str__()
         
-    def find_shortest_path_with_dijikstra(self, start: Zone, end: Zone
-                                          ) -> List[str]:
+    def shortest_path_between_zones(
+            self, start: Zone, end: Zone,
+            old_zones: List[str], zones: List[str]
+            ) -> Tuple[List[str], Dict[str, NodeInfo]]:
+
         if start.name == end.name:
             return []
         visited_zones: deque[str] = deque()
         unvisited_zones: deque[str] = deque(self.zones.keys())
-        info: Dict[str, Graph.NodeInfo] = {
+        distances: Dict[str, Graph.NodeInfo] = {
             zone: self.NodeInfo(inf, '') for zone in unvisited_zones
         }
-        info.get(start.name).cost = 0
-        path: List[str] = []
-        # print(info)
-        # return
-        
-        def find_path_between_two_zone_in_info(target: str) -> List[str]:
-            path: List[str] = []
-            # previous_nodes: List[str] = [zone_name for zone_name in info.get]
-            while info.get(target).previous_node != start.name:
-                path.append(target)
-                target = info.get(target).previous_node
-            path.append(target)
-            path.reverse()
-            # print(info)
-            return path
+        distances.get(start.name).cost = 0
             
         while unvisited_zones:
             unvisited_zones = deque(sorted(
                 unvisited_zones,
-                key=lambda x: (info.get(x).cost,
+                key=lambda x: (distances.get(x).cost,
                                self.zones.get(x).perfect)))
             target: str = unvisited_zones.popleft()
+            # filter blocked_zones
             target_nighbors: List[Zone] = list(filter(
-                lambda x: x.cost is not inf,
-                self.zones.get(target).nighbors))
-            # target_nighbors = list(sorted(
-            #     target_nighbors,
-            #     key=lambda x: (self.zones.get(x.name).cost,
-            #                    self.zones.get(x.name).perfect))
-            # )
-            # if target == 'bottleneck':
-            #     print(target_nighbors)
+                lambda x: x.cost is not inf, self.zones.get(target).nighbors))
+            # print('nighbors befor filter:', target_nighbors)
+            if len(zones) >= 2:
+                drone_curr = zones[0]
+                drone_neighbors = zones[1:]
+                if target == drone_curr and any(zone in [neigh.name for neigh in target_nighbors] for zone in drone_neighbors):
+                    target_nighbors: List[Zone] = list(filter(
+                        lambda x: ((x.capacity_usage < x.metadata.max_drones
+                                and self.connections.get(target+'-'+x.name).\
+                                    capacity_usage < self.connections.\
+                                        get(target+'-'+x.name).metadata.\
+                                            max_link_capacity)
+                                            and x.name not in old_zones),
+                                            self.zones.get(target).nighbors
+                                            )
+                    )       
+            else:
+                target_nighbors: List[Zone] = list(filter(
+                    lambda x: (x.name not in old_zones),
+                    self.zones.get(target).nighbors
+                    )
+                )
+            
+            # print('\nnighbors after filter:', target_nighbors)
             for zone in target_nighbors:
-                # if len(zone.available_drones) == zone.metadata.max_drones:
-                #     new_cost = inf
-                # else:
-                new_cost: int = zone.cost + info.get(target).cost
-                # print(zone.name)
-                if new_cost < info.get(zone.name).cost:
-                    info.get(zone.name).cost = new_cost
-                    info.get(zone.name).previous_node = target
-                # elif new_cost == info.get(zone.name).cost:
-                #     target_nighbor_prev__name: str = \
-                #         info.get(zone.name).previous_node
-                #     sort = sorted([target_nighbor_prev__name, target],
-                #                   key=lambda x: self.zones.get(x).perfect)
-                #     info.get(zone.name).previous_node = sort[0]
-            # break
-            # print('-' * 30)
+                new_cost: int = zone.cost + distances.get(target).cost
+                if new_cost < distances.get(zone.name).cost:
+                    distances.get(zone.name).cost = new_cost
+                    distances.get(zone.name).previous_node = target
             visited_zones.append(target)
-        # print(info)
-        if info.get(end.name).cost != inf:
-            path = find_path_between_two_zone_in_info(end.name)
-        return path[:]
+        return distances
+    
+    
+    def construct_path_in_distances(
+            self, start: str, target: str, distance) -> List[str]:
+        path: List[str] = []
+        while distance.get(target).previous_node != start:
+            if not distance.get(target).previous_node:
+                return []
+            path.append(target)
+            target = distance.get(target).previous_node
+        path.append(target)
+        path.reverse()
+        return path
+
+    def set_zone_and_connec_usage_to_0(self) -> None:
+        for zone in self.zones:
+            self.zones.get(zone).capacity_usage = len(self.zones.get(zone).available_drones)
         
-    def sort_zones_to_reach_end(self, end: str) -> List[str]:
-        zones_: List[Tuple[str, int]] = [
-            (zone_name,
-             len(self.find_shortest_path_with_dijikstra(
-                 self.zones.get(zone_name),
-                 self.zones.get(end))))
-            for zone_name in self.zones
-        ]
-        zones_ = sorted(zones_, key=lambda x: x[1], reverse=False)
-        return [x[0] for x in zones_]
-        
-        
-    def ft_turn(self, end: str) -> List[str]:
-        # zones_name: List[str] = list(self.zones.keys())
-        zones_name: List[str] = self.sort_zones_to_reach_end(end)
-        # zones_name.reverse()
-        # print('fuck', zones_name)
-        # return
-        # print('fuck you', zones_name)
+        for connec in self.connections:
+            self.connections.get(connec).capacity_usage = len(self.connections.get(connec).available_drones)
+
+    def ft_turn(self, drones: deque[Drone], end: Zone) -> List[str]:
         turn: List[str] = []
-        for zone in zones_name:
-            if ((self.zones.get(zone).available_drones or
-               self.zones.get(zone).restricted_drones)
-               and zone != end):
-                path: List[str] = self.find_shortest_path_with_dijikstra(
-                    self.zones.get(zone), self.zones.get(end))
+        
+        
+        self.set_zone_and_connec_usage_to_0()
+        for drone in deque(filter(lambda x: x.current_zone != end.name, drones)):
+            turn_zones: List[str] = []
+            # her drone in conncection i need move it to it's target zone
+            if '-' in drone.current_zone:
+                current_zone: Zone = self.zones.get(drone.current_zone.split('-', 1)[0])
+                target_zone: Zone = self.zones.get(drone.current_zone.split('-', 1)[1])
+                target_drone: Drone = self.connections.get(drone.current_zone).available_drones.popleft()
+                target_zone.available_drones.append(target_drone)
+                turn.append(drone.id+'-'+target_zone.name)
+                drone.current_zone = target_zone.name
                 
+                self.zones.get(target_zone.name).capacity_usage += 1
+                self.connections.get(current_zone.name+'-'+target_zone.name).capacity_usage += 1
+
+            else:
+                turn_zones.append(drone.current_zone)
+                
+                current_zone: Zone = self.zones.get(drone.current_zone)
+                # current_zone_neigh: List[str] = [
+                #     zone.name for zone in current_zone.nighbors
+                #     if zone.name not in drone.old_zones]
+                for zone in current_zone.nighbors:
+                    if zone.name not in drone.old_zones and zone.capacity_usage < zone.metadata.max_drones:
+                        turn_zones.append(zone.name)
+                        # print('fuuuuuck: ', zone.name)
+                # print(turn_zones)
+                distance = self.shortest_path_between_zones(current_zone, end, drone.old_zones, turn_zones)
+                drone.old_zones.append(current_zone.name)
+                # curr_zon_neighs: List[Zone] | None = current_zone.nighbors
+                # invalid_zones: List[Zone] = []
+                # for zone in curr_zon_neighs:
+                #     path_to_end: List[str] = self.construct_path_in_distances(end.name, zone.name)
+                #     path_to_end.reverse()
+                #     if current_zone.name in path_to_end:
+                #         invalid_zones.append(zone)
+                #     print(path_to_end)
+                #     print()
+                # for zone in invalid_zones:
+                #     curr_zon_neighs.remove(zone)
+                # print(curr_zon_neighs)
+                # exit()
+                    # if zone.cost == inf or 
+                # target_neighbors: List[Zone] | None = list(filter(
+                    # lambda x: x, current_zone.nighbors))
+                path = self.construct_path_in_distances(current_zone.name, end.name, distance)
+                # print(drone.id, distance, '\n')
+                # print(drone.id)
                 # print(path)
-                # if path:
-                target_zone = path[0]
-                # else:
-                #     continue
-                target_zone_capacity: int = \
-                    self.zones.get(target_zone).metadata.max_drones
+                # exit()
                 
-                target_connec_capacity: int = \
-                    self.connections.get(zone+'-'+target_zone).\
-                    metadata.max_link_capacity
-                
-                current_drones: int = len(
-                    self.zones.get(target_zone).available_drones)
-                
-                drones_to_move = target_zone_capacity - current_drones
-                
-                # free = False
-                for _ in range(min([drones_to_move, target_connec_capacity])):
-                    if (self.zones.get(zone).available_drones or
-                       self.zones.get(zone).restricted_drones):
-                        if self.zones.get(zone).restricted_drones:
-                            target = \
-                                self.zones.get(zone).restricted_drones.popleft()
-                            turn.append(f'{target.id}-{target_zone}')
-                            self.zones.get(target_zone)\
-                                .available_drones.append(target)
-                            continue
-                            # target_drone.restrected_target_zone = False
+                if path and all([zone not in path for zone in drone.old_zones]):
+                    # print(drone.id)
+                    # print(path)
+                    target_zone: Zone = self.zones.get(path[0])
+                    
+                    # turn_zones.append(target_zone.name)
+                    
+                    
+                    # print('=' * 40)
+                    # print(self.connections.get(current_zone.name+'-'+target_zone.name))
+                    # print('=' * 40)
+                    
+                    connection_usage = self.connections.get(
+                        current_zone.name+'-'+target_zone.name).capacity_usage
+                    
+                    connec_capacity = self.connections.get(
+                        current_zone.name+'-'+target_zone.name)\
+                            .metadata.max_link_capacity
+                    
+                    # print('connec usage:', drone.id, connection_usage)
+                    # print('connec capac:', drone.id, connec_capacity)
+                    # print(target_zone.capacity_usage)
+                    # print(target_zone.metadata.max_drones)
+                    if (target_zone.capacity_usage < target_zone.metadata.max_drones
+                       and connection_usage < connec_capacity):
+                        if target_zone.cost == 2:
+                            # print('fuck you', drone.id)
+                            drone.current_zone = current_zone.name+'-'+target_zone.name
+                            target_drone = current_zone.available_drones.popleft()
+                            self.connections.get(drone.current_zone).available_drones.append(target_drone)
                             
-                        target_drone = \
-                            self.zones.get(zone).available_drones.popleft()
-                        if (self.zones.get(target_zone)
-                           .metadata.zone_type == ZoneTypes('restricted')):
-
-                            # target_drone.restrected_target_zone = True
-                            #
-                            self.zones.get(zone).restricted_drones.appendleft(
-                                target_drone)
                             
-                            # restrected_drones.append(target_drone)
-                            turn.append(f'{target_drone.id}-{zone}'
-                                        f'-{target_zone}')
-                            # free = False
-                            continue
-                        
-                        # if target_drone.restrected_target_zone:
-                        #     turn.append(f'{target_drone.id}-{target_zone}')
-                        #     self.zones.get(target_zone)\
-                        #         .available_drones.append(target_drone)
-                        #     target_drone.restrected_target_zone = False
-                        #     # free = True
-                        #     continue
-
-                        self.zones.get(target_zone)\
-                            .available_drones.append(target_drone)
-                        turn.append(f'{target_drone.id}-{target_zone}')
-                # if (target_zone_capacity == len(self.zones.get(target_zone)
-                #                                 .available_drones)):
-                #     self.zones.get(target_zone).add_drone = False
+                            self.zones.get(drone.current_zone.split('-')[1]).capacity_usage += 1
+                            self.zones.get(current_zone.name).capacity_usage -= 1
+                            
+                            self.connections.get(drone.current_zone).capacity_usage += 1
+                            turn.append(drone.id+'-'+drone.current_zone)
+                        else:
+                            # print('fuck', drone.id)
+                            drone.current_zone = target_zone.name
+                            target_drone = current_zone.available_drones.popleft()
+                            self.zones.get(drone.current_zone).available_drones.append(target_drone)
+                            self.zones.get(drone.current_zone).capacity_usage += 1
+                            self.zones.get(current_zone.name).capacity_usage -= 1
+                            self.connections.get(current_zone.name+'-'+drone.current_zone).capacity_usage += 1
+                            
+                            
+                            turn.append(drone.id+'-'+drone.current_zone)
+                            # current_zone.capacity_usage -= 1
+                # print(drone)
                 # else:
-                #     self.zones.get(target_zone).add_drone = True
-                # for drone in restrected_drones:
-                #     self.zones.get(zone).available_drones.appendleft(drone)
-        # print(turn)
-                # print(self.zones.get(zone).available_drones)
+                #     break
+            
+        # for drone in drones:
+        #     if drone.current_zone == end.name:
+        #         drones.remove(drone)
                 # break
-            # if 
-            # if path := self.find_shortest_path_with_dijikstra(
-            #     self.zones.get(zone), self.zones.get(end)):
-            #     print(path[0])
-                
-        # for zone in self.zones.keys().__reversed__():
-        return turn
-
+        # print([drone.id for drone in drones])
+        print(turn)
+            
     def simulation(self, start: Zone, end: Zone) -> List[List[str]]:
         turns: List[List[str]] = []
-        while len(end.available_drones) != self.nb_drones:
-            turns.append(self.ft_turn(end.name))
-            # from time import sleep
-            # sleep(0.01)
-            # print(self.drones)
+        drones: deque[Drone] = deque(self.drones)
+        while drones:
+            turns.append(self.ft_turn(drones, end))
             # break
-            # break
-        return turns
-        # for turn in turns:
-            # print(turn)
+            # for drone in drones:
+            #     if drone.current_zone == end.name:
+            #         drones.remove(drone)
+            #         break
+        # print(drones)
+        
 
+
+        
     def set_drones_capacity_for_start_end_zones(self) -> None:
         for zone in self.zones.values():
             if (zone.name == self.start_end_zones.get('start_hub') or
@@ -249,24 +276,15 @@ class Graph:
             self.start_end_zones.get('start_hub')
         )
         start_zone.available_drones.extend(self.drones)
+        start_zone.capacity_usage = len(start_zone.available_drones)
         # print(start_zone.available_drones)
         for drone in start_zone.available_drones:
             drone.current_zone = start_zone.name
 
-    def remove_drones_fron_all_zones(self) -> None:
+    def remove_drones_from_all_zones(self) -> None:
         for zone in self.zones.values():
-            zone.available_drones = deque()
-        
-    
-    # def simulation_output(self, start: Zone):
-    #     start.available_drones.extend(self.drones)
-    #     while len(self.path[x].available_drones) != self.nb_drones:
-    #         x: int = len(self.path) - 1
-    #         while x >= 0:
-    #             if x > 0:
-    #                 if self.path[x-1].available_drones:
-                        
-        
+            zone.available_drones.clear()
+            zone.capacity_usage = 0
 
     def __str__(self) -> str:
         return str(
@@ -298,31 +316,37 @@ if __name__ == '__main__':
                   'python main.py map_file_example.txt\nor:\n'
                   'python main.py map_file_example.txt --visual')
             exit(1)
+        
         file: str = argv[1]
         if not file.endswith('.txt'):
             print('Error invalid syntax try:\n'
                   'python main.py map_file_example.txt\nor:\n'
                   'python main.py map_file_example.txt --visual')
             exit(0)
-    # try:
+        # try:
         p = Parser(file)
         p.parse_map()
         graph = Graph(p.nb_drones, p.zones, p.connections,
                     p.start_end_zones_name)
         graph.set_drones_capacity_for_start_end_zones()
         graph.move_all_drones_to_start_zone()
-        # print(graph.zones.get('start').nighbors)
-        # prhint(graph.start_end_zones)
-        # print(graph.zones)
         start_zone: Zone = graph.zones.get(
             graph.start_end_zones.get('start_hub'))
         
         end_zone: Zone = graph.zones.get(
             graph.start_end_zones.get('end_hub'))
         graph.find_nighbors_for_every_zone()
-        # print(start_zone.nighbors)
+        
+        # graph.distance = graph.shortest_path_between_zones(end_zone, graph.zones.get('dist_gate3'))
+        
+        # path = graph.construct_path_in_distances('goal', 'start')
+        # for key, value in graph.distance.items():
+        #     print(key, value)
+        # print(graph.distance)
+        # exit()
         if not flag:
             graph.turns = graph.simulation(start_zone, end_zone)
+            exit(0)
             for turn in graph.turns:
                 # pass
                 print(turn)
@@ -331,63 +355,11 @@ if __name__ == '__main__':
             from visualizer import Visualizer
             vis = Visualizer(graph)
             vis.run_gui()
-            # pygame.init()
-            # info = pygame.display.Info()
-            # screen_width = info.current_w
-            # screen_height = info.current_h
-            # screen = pygame.display.set_mode((screen_width, screen_height),
-            #                                  pygame.RESIZABLE)
-            # pygame.display.set_caption('yousenna FLY-IN ')
-            # run = True
-            # while run:
-            #     screen.fill('red')
-            #     # 1. Check for events (clicks, keys, etc.)
-            #     for event in pygame.event.get():
-            #         if event.type == pygame.QUIT:
-            #             run = False
-                    
-            #     pygame.draw.circle(screen, 'blue', (screen_width / 50, screen_width / 50),
-            #                        screen_width / 50, 5)
-            #     pygame.display.update()
-            #     from time import sleep
-            #     sleep(0.2)
-            #     # screen.fill('blue')
-            #     pygame.draw.rect(screen, 'green', (screen_width / 50,
-            #                                         screen_width / 50,
-            #                                         screen_width / 50,
-            #                                         screen_width / 50), 0, 5)
-            #     pygame.draw.rect(screen, 'yellow', (screen_width / 50,
-            #                                         screen_width / 50,
-            #                                         screen_width / 50,
-            #                                         screen_width / 50), 5, 5)
-            #     pygame.draw.rect(screen, 'green', (120, 120, 120, 200), 10)
-            #     pygame.draw.line(screen, 'black', ((screen_width / 50) * 2,
-            #                                        (screen_width / 50) * 2),
-            #                                       (120, 120), 5)
-            #     pygame.display.flip()
-                
-            #     sleep(0.2)
             
-            # exit = False
-            
-        
-        # path = graph.find_shortest_path_with_dijikstra(start_zone, end_zone)
-        # print(path)
-        # print(graph.path)
-        # print(start_zone.nighbors)
-        # print(end_zone)
-    # except Exception as e:
-    #         print(e.__class__.__name__, e)
-    #         exit(1)
+        # except Exception as e:
+        #     print(e.__class__.__name__, e)
+        #     exit(1)
     else:
         print('Error invalid syntax try:\n'
               'python main.py map_file_example.txt\nor:\n'
               'python main.py map_file_example.txt --visual')
-        
-        # print(graph.file_name)
-    
-    # print(flag)
-        
-    # print(file)
-            
-    # print(len(argv))
