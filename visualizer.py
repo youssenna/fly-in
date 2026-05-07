@@ -1,6 +1,6 @@
 from typing import Any
 import pygame
-from parser import Zone, Connection, ZoneTypes
+from parser import Zone, Connection
 from time import sleep
 from random import choice
 from collections import deque
@@ -20,14 +20,10 @@ class Visualizer:
 
     def draw_zone(self, zone: Zone, surface: Any):
         try:
-            # pygame.draw.rect(surface, zone.metadata.color,
-            #                  (zone.x * 80 + self.screen_w / 7 - 100,
-            #                   zone.y * 150 + self.screen_h / 2,
-            #                   60, 60), 0, 3)
             pygame.draw.circle(surface, zone.metadata.color,
-                             (zone.x * 80 + self.screen_w / 7 - 70,
+                             (zone.x * 80 + self.screen_w / 2 - 70,
                               zone.y * 150 + self.screen_h / 2 + 30), 35, 0)
-        except ValueError:
+        except Exception:
             colors = {
                 'normal': 'blue',
                 'blocked': 'black',
@@ -41,22 +37,15 @@ class Visualizer:
                 color = 'red'
             else:
                 color = colors.get(zone.metadata.zone_type.value)
-            # pygame.draw.rect(surface, color,
-            #                  (zone.x * 80 + self.screen_w / 7 - 100,
-            #                   zone.y * 150 + self.screen_h / 2,
-            #                   60, 60), 0, 3)
 
             pygame.draw.circle(surface, color,
-                             (zone.x * 80 + self.screen_w / 7 - 70,
+                             (zone.x * 80 + self.screen_w / 2 - 70,
                               zone.y * 150 + self.screen_h / 2 + 30), 35, 0)
             
         self.draw_drones(zone, surface)
-        # pygame.draw.rect(surface, 'white',
-        #                  (zone.x * 80 + self.screen_w / 7 - 100,
-        #                   zone.y * 150 + self.screen_h / 2,
-        #                   60, 60), 3, 3)
+
         pygame.draw.circle(surface, 'white',
-                             (zone.x * 80 + self.screen_w / 7 - 70,
+                             (zone.x * 80 + self.screen_w / 2 - 70,
                               zone.y * 150 + self.screen_h / 2 + 30), 35, 3)
         zone_name = self.font2.render(f'{zone.name}', True, 'green')
         available_d = self.font2.render(
@@ -67,13 +56,13 @@ class Visualizer:
             f'CAPACITY: {zone.metadata.max_drones}', True, 'white')
         cost = self.font2.render(
             f'COST: {zone.cost}', True, 'white')
-        surface.blit(zone_name, (zone.x * 80 + self.screen_w / 7 - 100,
+        surface.blit(zone_name, (zone.x * 80 + self.screen_w / 2 - 100,
                      zone.y * 150 + self.screen_h / 2 + 70))
-        surface.blit(available_d, (zone.x * 80 + self.screen_w / 7 - 100,
+        surface.blit(available_d, (zone.x * 80 + self.screen_w / 2 - 100,
                      zone.y * 150 + self.screen_h / 2 + 80))
-        surface.blit(capacity_d, (zone.x * 80 + self.screen_w / 7 - 100,
+        surface.blit(capacity_d, (zone.x * 80 + self.screen_w / 2 - 100,
                      zone.y * 150 + self.screen_h / 2 + 90))
-        surface.blit(cost, (zone.x * 80 + self.screen_w / 7 - 100,
+        surface.blit(cost, (zone.x * 80 + self.screen_w / 2 - 100,
                      zone.y * 150 + self.screen_h / 2 + 100))
             
     def draw_drones(self, zone: Zone, surface: Any):
@@ -82,36 +71,45 @@ class Visualizer:
                 ]
         color = choice(['red', 'yellow', 'orange', 'white'])
         for img in imgs:
-            surface.blit(img, (zone.x * 80 + self.screen_w / 7 - 100,
+            surface.blit(img, (zone.x * 80 + self.screen_w / 2 - 100,
                          zone.y * 150 + self.screen_h / 2))
 
             drone_info = self.font2.render(
                 f'{[drone.id for drone in zone.available_drones]}',
                 True, color)
-            surface.blit(drone_info, (zone.x * 80 + self.screen_w / 7 - 100,
+            surface.blit(drone_info, (zone.x * 80 + self.screen_w / 2 - 100,
                          zone.y * 150 + self.screen_h / 2 - 10))
 
     def connec_zones(self, connec: Connection, surface: Any):
         pygame.draw.line(surface, (0, 56, 54), 
-                         (connec.zone1.x * 80 + self.screen_w / 7 + 25 - 100,
+                         (connec.zone1.x * 80 + self.screen_w / 2 + 25 - 100,
                           connec.zone1.y * 150 + self.screen_h / 2 + 25),
-                         (connec.zone2.x * 80 + self.screen_w / 7 + 25 - 100,
+                         (connec.zone2.x * 80 + self.screen_w / 2 + 25 - 100,
                           connec.zone2.y * 150 + self.screen_h / 2 + 25),
                          5)
-        # if drones_len := len(self.graph.connections.get(connec.zone1.name+'-'+connec.zone2.name).available_drones):
-        #     imgs = [pygame.image.load('./drone_picture3.png')
-        #             for _ in range(drones_len)
-        #             ]
+        if drones_len := len(
+            self.graph.connections.get(
+                connec.zone1.name+'-'+connec.zone2.name).available_drones):
+            imgs = [pygame.image.load('./drone_picture3.png')
+                    for _ in range(drones_len)
+                    ]
             
-        #     for img in imgs:
-        #         surface.blit(img, (connec.zone2.x * 80 + self.screen_w / 7 - 90,
-        #                     connec.zone2.y * 150 + self.screen_h / 2 - 10))
+            for img in imgs:
+                zone1_x: int = connec.zone1.x * 80 + self.screen_w / 2 - 100
+                zone2_x: int = connec.zone2.x * 80 + self.screen_w / 2 - 100 
+                x_diff: int = (zone2_x - zone1_x) / 2
 
-        #         drone_info = self.font2.render(
-        #             f'{[drone.id for drone in self.graph.connections.get(connec.zone1.name+'-'+connec.zone2.name).available_drones]}',
-        #             True, 'white')
-        #         surface.blit(drone_info, (connec.zone2.x * 80 + self.screen_w / 7 - 90,
-        #                     connec.zone2.y * 150 + self.screen_h / 2 - 20))
+                zone1_y: int = connec.zone1.y * 150 + self.screen_h / 2
+                zone2_y: int = connec.zone2.y * 150 + self.screen_h / 2
+                y_diff: int = (zone2_y - zone1_y) / 2
+                surface.blit(img, (zone1_x + x_diff,
+                            zone1_y + y_diff))
+
+                drone_info = self.font2.render(
+                    f'{[drone.id for drone in self.graph.connections.get(
+                        connec.zone1.name+ "-" +connec.zone2.name).available_drones]}',
+                    True, 'white')
+                surface.blit(drone_info, (zone1_x + x_diff + 20, zone1_y + y_diff))
             
 
 
@@ -143,7 +141,10 @@ class Visualizer:
                 if (len(self.graph.zones.get(end_zone_name).available_drones)
                    != self.graph.nb_drones):
                     nb_turnes += 1
-                    self.graph.ft_turn(drones, self.graph.zones.get(end_zone_name))
+                    print(' '.join(self.graph.ft_turn(drones, self.graph.\
+                                                      zones.get(end_zone_name)
+                                                      ))
+                    )
             if keys[pygame.K_TAB]:
                 self.screen_w *= 0.9
                 # self.screen_h *= 0.5

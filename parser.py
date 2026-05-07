@@ -6,7 +6,7 @@
 #  By: yousenna <yousenna@student.42.fr>         +#+  +:+       +#+         #
 #                                              +#+#+#+#+#+   +#+            #
 #  Created: 2026/03/15 07:33:01 by yousenna        #+#    #+#               #
-#  Updated: 2026/05/06 13:20:59 by yousenna        ###   ########.fr        #
+#  Updated: 2026/05/07 13:25:11 by yousenna        ###   ########.fr        #
 #                                                                           #
 # ************************************************************************* #
 from typing import Dict, List, Optional, Tuple, Union, Any
@@ -201,8 +201,11 @@ class Parser:
                 line_number += 1
                 if line.startswith('#') or not line:
                     continue
-                else:
-                    break
+                if '#' in line:
+                    line = line.split('#', 1)[0].strip()
+                    print(line)
+                # else:
+                break
             self.nb_drones: int = self._get_nb_drones(line, line_number)
 
             zone_prefix: List[str] = []
@@ -212,10 +215,17 @@ class Parser:
                 line_number += 1
                 if line.startswith('#') or not line:
                     continue
+                if '#' in line:
+                    line = line.split('#', 1)[0].strip()
                 if 'hub' in line:
                     zone_name, zone_obj = self._parse_zone(line, line_number,
                                                            self.zones,
                                                            zone_prefix)
+                    if self.zones:
+                        for zone in self.zones.values():
+                            if (zone.x, zone.y) == (zone_obj.x, zone_obj.y):
+                                raise ValueError(f'at line {line_number}: '
+                                                 'duplicate zone cordination')
                     self.zones[zone_name] = zone_obj
                 # i need to parse first line that's has connection
                 elif 'connection' in line:
@@ -242,6 +252,8 @@ class Parser:
                 line_number += 1
                 if line.startswith('#') or not line:
                     continue
+                if '#' in line:
+                    line = line.split('#', 1)[0].strip()
                 if 'connection' in line:
                     self.connections.extend(
                         self._parse_connection(line, line_number)
@@ -380,10 +392,11 @@ class Parser:
                                  'elements, color, zone, max_drones'
                                  'and check if you split key=value with space'
                                  'and no space between keys and values')
-            if len(metadata_els) != len(set(metadata_els)):
-                raise ValueError(f'at line {line_number}: check if '
-                                 'no duplicatee of metadata')
+            # if len(metadata_els) != len(set(metadata_els)):
+            #     raise ValueError(f'at line {line_number}: check if '
+            #                      'no duplicatee of metadata')
             metadata_dict: Dict[str, str] = {}
+            line_metadata_key: List[str] = []
             for data in metadata_els:
                 if '=' in data:
                     key, value = data.split('=', 1)
@@ -401,7 +414,11 @@ class Parser:
                                          f'{key.strip()}" try '
                                          f'{support_metadata}'
                                          )
+                    if key in line_metadata_key:
+                        raise ValueError(f'at line {line_number}: check if '
+                                         'no duplicatee of metadata')
                     metadata_dict[key] = value
+                    line_metadata_key.append(key)
                 else:
                     raise SyntaxError(f'at line {line_number}: [invalid '
                                       'syntax] missing key=value for metadata'
@@ -509,19 +526,19 @@ class Parser:
                 raise ValueError(f'at line {line_number} '
                                  'max_link_capacity value must be valid '
                                  f'integer: {e}')
-            return (Connection(self.zones.get(zone1),
+            return (Connection(self.zones.get(zone2),
+                               self.zones.get(zone1),
+                               ConnecMetadata(line_number, valid_value)),
+                    Connection(self.zones.get(zone1),
                                self.zones.get(zone2),
                                ConnecMetadata(line_number, valid_value)),
-                    Connection(self.zones.get(zone2),
-                               self.zones.get(zone1),
-                               ConnecMetadata(line_number, valid_value))
                     )
     
-        return (Connection(self.zones.get(zone1),
-                           self.zones.get(zone2),
-                           ConnecMetadata(line_number)),
-                Connection(self.zones.get(zone2),
+        return (Connection(self.zones.get(zone2),
                            self.zones.get(zone1),
+                           ConnecMetadata(line_number)),
+                Connection(self.zones.get(zone1),
+                           self.zones.get(zone2),
                            ConnecMetadata(line_number))
                 )
 
