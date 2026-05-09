@@ -6,7 +6,7 @@
 #  By: yousenna <yousenna@student.42.fr>         +#+  +:+       +#+         #
 #                                              +#+#+#+#+#+   +#+            #
 #  Created: 2026/03/15 07:33:01 by yousenna        #+#    #+#               #
-#  Updated: 2026/05/07 13:25:11 by yousenna        ###   ########.fr        #
+#  Updated: 2026/05/09 11:16:42 by yousenna        ###   ########.fr        #
 #                                                                           #
 # ************************************************************************* #
 from typing import Dict, List, Optional, Tuple, Union, Any
@@ -17,14 +17,17 @@ from collections import deque
 
 
 class ProporityError(Exception):
+    """Custom exception for property-related errors during parsing."""
     pass
 
 
 class MaxDronesError(Exception):
+    """Custom exception for errors related to max_drones values."""
     pass
 
 
 class ZoneTypes(Enum):
+    """Enumeration for the different types of zones."""
     NORMAL = 'normal'
     BLOCKED = 'blocked'
     RESTRICTED = 'restricted'
@@ -32,25 +35,47 @@ class ZoneTypes(Enum):
 
 
 class ZoneMetaData:
+    """
+    Stores and validates metadata for a Zone.
+    """
     def __init__(self, line_nb: int, zone_type: Any = 'normal',
                  color: Optional[str] = None,
                  max_drones: Any = 1):
+        """
+        Initializes ZoneMetaData.
+
+        Args:
+            line_nb: The line number from the map file for error reporting.
+            zone_type: The type of the zone (e.g., 'normal', 'blocked').
+            color: The color for visualization.
+            max_drones: The maximum number of drones the zone can hold.
+        """
         self.line_number: int = line_nb
         self.zone_type: ZoneTypes = self._get_zone_type(zone_type)
         self.color: Optional[str] = self._get_color(color)
         self.max_drones: int = self._get_max_drones(max_drones)
 
     def __str__(self) -> str:
+        """Returns a string representation of the zone metadata."""
         return (f'|Zone Metadata| line number = {self.line_number} | '
                 f'zone type = {self.zone_type} | '
                 f'color = {self.color} | '
                 f'max_drones = {self.max_drones} |')
 
     def __repr__(self) -> str:
+        """Returns a developer-friendly representation."""
         return self.__str__()
-    
 
     def _get_zone_type(self, zone_type: str) -> ZoneTypes:
+        """
+        Validates and returns the zone type.
+
+        Args:
+            zone_type: The string representation of the zone type.
+
+        Returns:
+            A valid ZoneTypes enum member.
+        """
         try:
             valid_zone: ZoneTypes = ZoneTypes(zone_type)
         except ValueError as e:
@@ -62,6 +87,15 @@ class ZoneMetaData:
         return valid_zone
 
     def _get_color(self, color: Optional[str]) -> Optional[str]:
+        """
+        Validates and returns the color.
+
+        Args:
+            color: The color string.
+
+        Returns:
+            A valid color string or None.
+        """
         if color is None or color.isalpha():
             valid_color: Optional[str] = color
         else:
@@ -72,6 +106,15 @@ class ZoneMetaData:
         return valid_color
 
     def _get_max_drones(self, nb: Union[int, str]) -> int:
+        """
+        Validates and returns the max_drones number.
+
+        Args:
+            nb: The number of max drones as a string or int.
+
+        Returns:
+            A valid integer for max_drones.
+        """
         try:
             valid_drones_nb: int = int(nb)
             if valid_drones_nb < 1:
@@ -85,24 +128,46 @@ class ZoneMetaData:
 
 
 class Drone:
+    """
+    Represents a single drone in the simulation.
+    """
 
     def __init__(self, id: str):
+        """
+        Initializes a Drone object.
+
+        Args:
+            id: The unique identifier for the drone (e.g., 'D1').
+        """
         self.id: str = id
-        self.restrected_target_zone: bool = False
         self.old_zones: List[str] = []
-        # self.trucked: bool = True
         self.current_zone: str = ''
 
     def __str__(self) -> str:
+        """Returns a string representation of the drone."""
         return (f'|id| = {self.id} | currnt_zone = {self.current_zone}\n')
 
     def __repr__(self) -> str:
+        """Returns a developer-friendly representation."""
         return self.__str__()
 
 
 class Zone:
+    """
+    Represents a zone (or node) in the graph.
+    """
     def __init__(self, name: str, x: int, y: int, metadata: ZoneMetaData,
                  prefix: str):
+        """
+        Initializes a Zone object.
+
+        Args:
+            name: The unique name of the zone.
+            x: The x-coordinate of the zone.
+            y: The y-coordinate of the zone.
+            metadata: A ZoneMetaData object for the zone.
+            prefix: The prefix from the map file (e.g., 'hub', 'start_hub').
+        """
         self.name: str = name
         self.x: int = x
         self.y: int = y
@@ -111,25 +176,29 @@ class Zone:
         self.prefix: str = prefix
         self.nighbors: List[Zone] = []
         self.capacity_usage: int = 0
-        self.move_to_restricted: bool = False
         self.available_drones: deque[Drone] = deque()
-        self.restricted_drones: deque[Drone] = deque()
+        self.perfect: float | int = inf
 
-    def _cost(self) -> int:
+    def _cost(self) -> int | float:
+        """
+        Calculates the cost to traverse this zone based on its type.
+        """
         if self.metadata.zone_type == ZoneTypes('normal'):
-            self.perfect: int = 1
+            self.perfect = 1
             return 1
         if self.metadata.zone_type == ZoneTypes('restricted'):
-            self.perfect: int = 2
+            self.perfect = 2
             return 2
         if self.metadata.zone_type == ZoneTypes('priority'):
-            self.perfect: int = 0
+            self.perfect = 0
             return 1
         if self.metadata.zone_type == ZoneTypes('blocked'):
-            self.perfect: int = inf
+            self.perfect = inf
             return inf
+        return inf
 
     def __str__(self) -> str:
+        """Returns a string representation of the zone."""
         return (
             f'|Zone info| name = {self.name} | '
             f'x = {self.x} | y = {self.y} | '
@@ -139,22 +208,43 @@ class Zone:
         )
 
     def __repr__(self) -> str:
+        """Returns a developer-friendly representation."""
         return self.__str__()
 
 
 class ConnecMetadata:
+    """
+    Stores and validates metadata for a Connection.
+    """
     def __init__(self, line_number: int, max_link_capacity: int = 1):
+        """
+        Initializes ConnecMetadata.
+
+        Args:
+            line_number: Line number from map file for error reporting.
+            max_link_capacity: Max drones allowed on the connection.
+        """
         self.line_number = line_number
         self.max_link_capacity: int = self._get_link_capacity(
             max_link_capacity)
 
     def __str__(self) -> str:
+        """Returns a string representation of the connection metadata."""
         return (
             '|Connection metadata info| max_link_capacity = '
             f'{self.max_link_capacity} | '
         )
 
     def _get_link_capacity(self, max_links: int) -> int:
+        """
+        Validates and returns the max_link_capacity.
+
+        Args:
+            max_links: The max link capacity.
+
+        Returns:
+            A valid integer for max_link_capacity.
+        """
         if (max_links < 1):
             raise MaxDronesError(f'at line {self.line_number}: '
                                  'max_drone_capacity must be greater then 0')
@@ -162,7 +252,18 @@ class ConnecMetadata:
 
 
 class Connection:
+    """
+    Represents a connection (or edge) between two zones.
+    """
     def __init__(self, zone_1: Any, zone_2: Any, metadata: ConnecMetadata):
+        """
+        Initializes a Connection object.
+
+        Args:
+            zone_1: The first Zone object in the connection.
+            zone_2: The second Zone object in the connection.
+            metadata: A ConnecMetadata object for the connection.
+        """
         self.zone1: Zone = zone_1
         self.zone2: Zone = zone_2
         self.metadata: ConnecMetadata = metadata
@@ -170,6 +271,7 @@ class Connection:
         self.capacity_usage: int = 0
 
     def __str__(self) -> str:
+        """Returns a string representation of the connection."""
         return (
             f'[{self.zone1.name}-{self.zone2.name}]'
             f'| Connection info| zone1 = {self.zone1} | '
@@ -178,11 +280,21 @@ class Connection:
         )
 
     def __repr__(self) -> str:
+        """Returns a developer-friendly representation."""
         return self.__str__()
 
 
 class Parser:
+    """
+    Parses a map file to build the simulation environment.
+    """
     def __init__(self, file_name: str) -> None:
+        """
+        Initializes the Parser.
+
+        Args:
+            file_name: The path to the map file.
+        """
         self.file_name: str = file_name
         self.start_end_zones_name: Dict[str, str] = {}
         self.zones: Dict[str, Zone] = {}
@@ -190,6 +302,12 @@ class Parser:
         self.connections: List[Connection] = []
 
     def parse_map(self) -> None:
+        """
+        Reads and parses the entire map file.
+
+        This method orchestrates the parsing of drones, zones, and
+        connections from the file specified in the constructor.
+        """
         # check if file empty
         if not os.path.getsize(self.file_name):
             raise ValueError('Error file is empty')
@@ -267,6 +385,16 @@ class Parser:
 
     @staticmethod
     def _get_nb_drones(line: str, line_number: int) -> int:
+        """
+        Parses and validates the number of drones from the first line.
+
+        Args:
+            line: The line containing the 'nb_drones' declaration.
+            line_number: The current line number for error reporting.
+
+        Returns:
+            The number of drones as an integer.
+        """
         if 'nb_drones' not in line:
             raise ProporityError(f'at line {line_number}: first '
                                  'line must have nb_drones propority')
@@ -290,6 +418,18 @@ class Parser:
     def _parse_zone(self, line: str, line_number: int,
                     zones: Dict[str, Zone], zone_types: List[str]
                     ) -> Tuple[str, Zone]:
+        """
+        Parses a line to create a Zone object.
+
+        Args:
+            line: The line from the map file defining a zone.
+            line_number: The current line number for error reporting.
+            zones: A dictionary of already parsed zones.
+            zone_types: A list of prefixes found ('start_hub', 'end_hub').
+
+        Returns:
+            A tuple containing the zone name and the created Zone object.
+        """
         # check for start_hub, end_hub, or hub
         if ':' not in line:
             raise SyntaxError(f'at line {line_number} invalid syntax for '
@@ -436,7 +576,17 @@ class Parser:
                                     zone, color, max_drones), prefix))
 
     def _parse_connection(self, line: str, line_number: int
-                          ) -> Tuple[Connection]:
+                          ) -> Tuple[Connection, Connection]:
+        """
+        Parses a line to create a bi-directional Connection.
+
+        Args:
+            line: The line from the map file defining a connection.
+            line_number: The current line number for error reporting.
+
+        Returns:
+            A tuple of two Connection objects for bi-directional travel.
+        """
         if ':' not in line:
             raise SyntaxError(f'at line {line_number}: invalid syntax \n'
                               'expected syntax: '
@@ -460,7 +610,7 @@ class Parser:
                                   'you don\'t revers them')
             metadata = rest[start_index+1:end_index].strip()
             if len(rest[end_index+1:]) > 0:
-                raise SyntaxError(f'at line {line_number}: you shouldn\'nt '
+                raise SyntaxError(f'at line {line_number}: you shouldn\'t '
                                   'write any thing after metadata')
 
             rest = rest[:start_index]
@@ -533,7 +683,7 @@ class Parser:
                                self.zones.get(zone2),
                                ConnecMetadata(line_number, valid_value)),
                     )
-    
+
         return (Connection(self.zones.get(zone2),
                            self.zones.get(zone1),
                            ConnecMetadata(line_number)),
