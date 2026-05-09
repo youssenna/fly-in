@@ -121,6 +121,7 @@ The core logic, algorithm design, and overall architecture of this project were 
     -   [Dijkstra's Algorithm - free code camp](https://www.freecodecamp.org/news/dijkstras-shortest-path-algorithm-visual-introduction/)
     
     -   [Poetry Documentation](https://python-poetry.org/docs/)
+    -   [my documentation at miro](https://miro.com/app/board/uXjVGotVFk4=/)
 
 ## Author
 
