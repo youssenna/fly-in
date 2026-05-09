@@ -8,7 +8,7 @@
 #  By: yousenna <yousenna@student.42.fr>         +#+  +:+       +#+         #
 #                                              +#+#+#+#+#+   +#+            #
 #  Created: 2026/03/30 16:47:56 by yousenna        #+#    #+#               #
-#  Updated: 2026/05/09 13:25:52 by yousenna        ###   ########.fr        #
+#  Updated: 2026/05/09 18:17:57 by yousenna        ###   ########.fr        #
 #                                                                           #
 # ************************************************************************* #
 
@@ -81,7 +81,7 @@ class Graph:
 
     class NodeInfo:
         """
-        A helper class to store pathfinding information for a zone i 
+        A helper class to store pathfinding information for a zone i
         will use it in my shortest_path_between_zones method.
         """
         def __init__(self, cost: Union[float, int], previous_node: str):
@@ -406,11 +406,11 @@ class Graph:
 
 if __name__ == '__main__':
     if len(argv) == 3 or len(argv) == 2:
-        flag: str = argv[2] if len(argv) == 3 else None
+        flag: str | None = argv[2] if len(argv) == 3 else None
         if flag and flag != '--visual':
             print('Error invalid syntax try:\n'
-                'python main.py map_file_example.txt\nor:\n'
-                'python main.py map_file_example.txt --visual')
+                  'python main.py map_file_example.txt\nor:\n'
+                  'python main.py map_file_example.txt --visual')
             exit(1)
 
         file: str = argv[1]
@@ -423,7 +423,7 @@ if __name__ == '__main__':
             p = Parser(file)
             p.parse_map()
             graph = Graph(p.nb_drones, p.zones, p.connections,
-                        p.start_end_zones_name)
+                          p.start_end_zones_name)
             graph.check_start_and_end_zone_not_blocked()
             graph.set_drones_capacity_for_start_end_zones()
             graph.move_all_drones_to_start_zone()

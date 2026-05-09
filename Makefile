@@ -1,10 +1,12 @@
 PYTHON=poetry run python
+MYPY= poetry run mypy
+FLAKE8 = poetry run flake8
 
 install:
-	python -m pipx install poetry
+	python -m pip install poetry
 	poetry install
 
-run:
+run: install
 	${PYTHON} ./main.py ./maps/challenger/01_the_impossible_dream.txt --visual
 
 debug:
@@ -16,6 +18,6 @@ clean:
 
 
 lint:
-	flake8 .
-	mypy . --warn-return-any --warn-unused-ignores --ignore-missing-imports --disallow-untyped-defs --check-untyped-defs
+	${MYPY} . --warn-return-any --warn-unused-ignores --ignore-missing-imports --disallow-untyped-defs --check-untyped-defs
+	${FLAKE8} .
 

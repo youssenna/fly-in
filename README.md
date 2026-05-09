@@ -28,7 +28,7 @@ This project uses Poetry for dependency management.
     ```
 
 2.  **Install dependencies:**
-    Make sure you have Python 3.12+ and pipx installed. Then, run the following command from the project root:
+    Make sure you have Python 3.12+ and pip installed. Then, run the following command from the project root:
     ```bash
     make install
     ```
