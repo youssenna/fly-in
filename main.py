@@ -8,7 +8,7 @@
 #  By: yousenna <yousenna@student.42.fr>         +#+  +:+       +#+         #
 #                                              +#+#+#+#+#+   +#+            #
 #  Created: 2026/03/30 16:47:56 by yousenna        #+#    #+#               #
-#  Updated: 2026/05/09 18:17:57 by yousenna        ###   ########.fr        #
+#  Updated: 2026/05/12 18:39:14 by yousenna        ###   ########.fr        #
 #                                                                           #
 # ************************************************************************* #
 
@@ -229,7 +229,6 @@ class Graph:
         """
         turn: List[str] = []
 
-        self.resete_zone_and_connec_usage()
         for drone in deque(
                 filter(lambda x: x.current_zone != end.name, drones)):
             # i will store her the drone current zone and it's neighbors
@@ -319,6 +318,7 @@ class Graph:
                                              current_zone].capacity_usage += 1
 
                             turn.append(drone.id+'-'+drone.current_zone)
+        self.resete_zone_and_connec_usage()
         return turn
 
     def simulation(self, end: Zone) -> List[List[str]]:
@@ -366,13 +366,16 @@ class Graph:
         for drone in start_zone.available_drones:
             drone.current_zone = start_zone.name
 
-    def remove_drones_from_all_zones(self) -> None:
+    def remove_drones_from_all_zones_connecs(self) -> None:
         """
         Clears all drones from every zone in the graph.
         """
         for zone in self.zones.values():
             zone.available_drones.clear()
             zone.capacity_usage = 0
+        for connec in self.connections.values():
+            connec.available_drones.clear()
+            connec.capacity_usage = 0
 
     def check_start_and_end_zone_not_blocked(self) -> None:
         """
@@ -382,12 +385,11 @@ class Graph:
             if zone in self.start_end_zones.values():
                 if self.zones[zone].metadata.zone_type == \
                         ZoneTypes('blocked'):
+                    line_nb = self.zones[zone].metadata.line_number
                     raise ValueError('at line '
-                                     f'{self.zones[zone].
-                                        metadata.line_number}: '
+                                     f"{line_nb}: "
                                      f'zone "{self.zones[zone].name}" '
-                                     'can\'t be of type blocked [start or end '
-                                     'zone]')
+                                     'can\'t be of type blocked')
 
     def __str__(self) -> str:
         return str(

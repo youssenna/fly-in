@@ -6,7 +6,7 @@
 #  By: yousenna <yousenna@student.42.fr>         +#+  +:+       +#+         #
 #                                              +#+#+#+#+#+   +#+            #
 #  Created: 2026/03/15 07:33:01 by yousenna        #+#    #+#               #
-#  Updated: 2026/05/09 11:16:42 by yousenna        ###   ########.fr        #
+#  Updated: 2026/05/12 18:44:38 by yousenna        ###   ########.fr        #
 #                                                                           #
 # ************************************************************************* #
 from typing import Dict, List, Optional, Tuple, Union, Any
@@ -52,7 +52,7 @@ class ZoneMetaData:
         """
         self.line_number: int = line_nb
         self.zone_type: ZoneTypes = self._get_zone_type(zone_type)
-        self.color: Optional[str] = self._get_color(color)
+        self.color: Any = self._get_color(color)
         self.max_drones: int = self._get_max_drones(max_drones)
 
     def __str__(self) -> str:
@@ -81,8 +81,8 @@ class ZoneMetaData:
         except ValueError as e:
             raise ValueError(f'at line {self.line_number}:'
                              f' Unsuport value for "zone" key [{e}]\n'
-                             f'try one of those: {
-                            [zone.value for zone in ZoneTypes]}'
+                             f'try one of those: '
+                             f'{[zone.value for zone in ZoneTypes]}'
                              )
         return valid_zone
 
@@ -310,7 +310,7 @@ class Parser:
         """
         # check if file empty
         if not os.path.getsize(self.file_name):
-            raise ValueError('Error file is empty')
+            raise SyntaxError('Error file is empty')
         with open(self.file_name, 'r') as f:
             line_number: int = 0
             # parsing of first line must containe nb_lines
@@ -353,7 +353,8 @@ class Parser:
                     break
                 else:
                     raise SyntaxError(f'at line {line_number}: '
-                                      f'Unknowing syntax [{line.strip('\n')}]')
+                                      'Unknowing syntax '
+                                      f'[{line}]')
 
             if 'start_hub' not in zone_prefix:
                 raise SyntaxError(f'at line {line_number} missing zone type\'s'

@@ -102,8 +102,8 @@ The visualizer, built with Pygame, provides an intuitive and engaging way to und
     -   Drones traversing a connection are shown at the midpoint of the connection line.
 -   **Interactive Controls**:
     -   **Spacebar**: Advances the simulation by one turn.
-    -   **Down Arrow**: Resets the simulation, moving all drones back to the start hub.
-    -   **Tab**: move map to left.
+    -   **Arrow Keys (Up, Down, Left, Right)**: Pan the camera to move the map view.
+    -   **Tab**: Resets the simulation, moving all drones back to the start hub and resetting the turn counter.
 
 This graphical feedback makes it much easier to debug the algorithm, identify bottlenecks, and appreciate the complexity of the drone coordination.
 

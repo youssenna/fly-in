@@ -6,7 +6,7 @@ install:
 	python -m pip install poetry
 	poetry install
 
-run: install
+run:
 	${PYTHON} ./main.py ./maps/challenger/01_the_impossible_dream.txt --visual
 
 debug:
